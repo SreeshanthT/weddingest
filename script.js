@@ -130,6 +130,31 @@ function deleteItem(arrayName, index) {
     saveData();
 }
 
+function editDress(index) {
+    const d = data.dresses[index];
+    const newName = prompt('Dress type name:', d.name);
+    if (newName === null) return;
+    const newBudget = prompt('Max budget (₹):', d.budget);
+    if (newBudget === null) return;
+    if (newName.trim() && !isNaN(parseFloat(newBudget))) {
+        d.name = newName.trim();
+        d.budget = parseFloat(newBudget);
+        renderAll();
+        saveData();
+    }
+}
+
+function editMember(index) {
+    const m = data.members[index];
+    const newName = prompt('Member name:', m.name);
+    if (newName === null) return;
+    if (newName.trim()) {
+        m.name = newName.trim();
+        renderAll();
+        saveData();
+    }
+}
+
 function updateLog(index, field, value) {
     data.logs[index][field] = value;
     renderAll();
@@ -230,7 +255,10 @@ function renderAll() {
             <tr>
                 <td class="p-3 border text-sm">${d.name}</td>
                 <td class="p-3 border text-sm font-mono">₹${d.budget.toLocaleString()}</td>
-                <td class="p-3 border"><button onclick="deleteItem('dresses', ${i})" class="text-red-500 text-xs">Delete</button></td>
+                <td class="p-3 border flex space-x-1">
+                    <button onclick="editDress(${i})" class="text-blue-500 text-xs">Edit</button>
+                    <button onclick="deleteItem('dresses', ${i})" class="text-red-500 text-xs">Delete</button>
+                </td>
             </tr>
         `).join('');
     const dressCountEl = document.getElementById('dressCount');
@@ -241,7 +269,10 @@ function renderAll() {
     memberBody.innerHTML = data.members.map((m, i) => `
             <tr>
                 <td class="p-3 border text-sm">${m.name}</td>
-                <td class="p-3 border"><button onclick="deleteItem('members', ${i})" class="text-red-500 text-xs">Delete</button></td>
+                <td class="p-3 border flex space-x-1">
+                    <button onclick="editMember(${i})" class="text-blue-500 text-xs">Edit</button>
+                    <button onclick="deleteItem('members', ${i})" class="text-red-500 text-xs">Delete</button>
+                </td>
             </tr>
         `).join('');
     const memberCountEl = document.getElementById('memberCount');

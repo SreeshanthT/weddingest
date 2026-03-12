@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wedding Budget Estimator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs (for serverless backend) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <link rel="stylesheet" href="styles.css">
+
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+
+<div class="max-w-6xl mx-auto p-4 md:p-8">
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl font-bold text-gray-800">Wedding Clothing Budget Estimator</h1>
+        <p class="text-gray-600">Plan and track your family's wedding attire expenses</p>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="flex space-x-4 border-b border-gray-200 mb-6 bg-white rounded-t-lg px-4 pt-2">
+        <button onclick="showTab('settings')" id="tab-settings" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition active">1. Dress Settings</button>
+        <button onclick="showTab('members')" id="tab-members" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">2. Family Members</button>
+        <button onclick="showTab('purchase')" id="tab-purchase" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">3. Purchase Log & Tracker</button>
+    </div>
+
+    <!-- Tab 1: Dress Settings -->
+    <div id="settings" class="tab-content active bg-white p-6 rounded-lg shadow-sm">
+        <h2 class="text-xl font-semibold mb-4">Master Price List</h2>
+        <div class="flex gap-4 mb-4 flex-wrap">
+            <input type="text" id="newDressType" placeholder="Dress Type (e.g. Kerala Saree)" class="border p-2 rounded flex-1 min-w-[200px]">
+            <input type="number" id="newDressBudget" placeholder="Max Budget" class="border p-2 rounded w-32">
+            <button onclick="addDressType()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Add Type</button>
+        </div>
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="p-3 border">Dress Type</th>
+                    <th class="p-3 border">Max Budget (₹)</th>
+                    <th class="p-3 border w-20">Action</th>
+                </tr>
+            </thead>
+            <tbody id="dressTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Tab 2: Members -->
+    <div id="members" class="tab-content bg-white p-6 rounded-lg shadow-sm">
+        <h2 class="text-xl font-semibold mb-4">Add Family Members</h2>
+        <div class="flex gap-4 mb-4">
+            <input type="text" id="newMemberName" placeholder="Full Name" class="border p-2 rounded flex-1">
+            <button onclick="addMember()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Add Member</button>
+        </div>
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="p-3 border">Name</th>
+                    <th class="p-3 border w-20">Action</th>
+                </tr>
+            </thead>
+            <tbody id="memberTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Tab 3: Purchase Log -->
+    <div id="purchase" class="tab-content bg-white p-6 rounded-lg shadow-sm">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-indigo-50 p-4 rounded-lg">
+                <p class="text-sm text-indigo-600 font-medium">Total Estimated</p>
+                <h3 class="text-2xl font-bold text-indigo-900" id="statTotalEst">₹0</h3>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg">
+                <p class="text-sm text-green-600 font-medium">Total Spent</p>
+                <h3 class="text-2xl font-bold text-green-900" id="statTotalSpent">₹0</h3>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg">
+                <p class="text-sm text-orange-600 font-medium">Budget Variance</p>
+                <h3 class="text-2xl font-bold text-orange-900" id="statVariance">₹0</h3>
+            </div>
+        </div>
+
+        <h2 class="text-xl font-semibold mb-4">Shopping Record</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 text-sm">
+                        <th class="p-3 border">Member</th>
+                        <th class="p-3 border">Dress Type</th>
+                        <th class="p-3 border">Est. Budget</th>
+                        <th class="p-3 border">Actual Price</th>
+                        <th class="p-3 border">Savings</th>
+                        <th class="p-3 border">Status</th>
+                        <th class="p-3 border w-20"></th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody"></tbody>
+            </table>
+        </div>
+        <div class="mt-6 flex flex-wrap gap-2">
+            <button onclick="addRow()" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 text-sm">+ Add Row</button>
+            <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-bold">Download Excel Spreadsheet (.xls)</button>
+            <button onclick="exportCSV()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">Export Data Only (.csv)</button>
+        </div>
+    </div>
+</div>
+
+<!-- main logic; no module required now that we use compat globals -->
+<script src="script.js"></script>
+
+</body>
+</html>

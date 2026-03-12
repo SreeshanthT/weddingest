@@ -1,5 +1,36 @@
 # wedding
 
+## Overview
+This repository contains a client‑side wedding clothing budget tracker. The UI is in `index.html` with separate `styles.css` and `script.js` files. A small Node.js backend (`server.js`) provides a JSON API so multiple family members can view and update the data. The frontend can be hosted on GitHub Pages while the backend runs on any Node‑friendly platform.
+
+## Development & Deployment
+
+### Front‑end
+1. Open `index.html` in a browser or run a simple static server (`npx serve .`).
+2. When the backend is available at `/api/data` the page will fetch and save data automatically; it falls back to default values otherwise.
+3. To publish the UI, push the repository to GitHub and enable GitHub Pages on the `main` (or `gh-pages`) branch. The static files do not require any build step.
+
+### Serverless Backend (Firebase)
+Instead of running your own server, you can use a serverless database such as **Firebase Realtime Database** or **Firestore**. The code has been updated to work with Firebase; simply create a Firebase project and paste your configuration into `script.js` (replace the placeholder values near the top). The front end loads and saves the complete `data` object under the `/data` path in the database.
+
+1. Go to [Firebase Console](https://console.firebase.google.com/) and create a project.
+2. In the project settings -> **SDK setup** copy the config object and fill in the `firebaseConfig` constant in `script.js`.
+3. Enable **Realtime Database** (or Firestore) from the side menu and set the rules to allow read/write for your users (for testing you can use open rules).
+4. Deploy the front end to GitHub Pages as before. The page will automatically communicate with Firebase—no additional server hosting needed.
+
+If you prefer other serverless platforms, you could also deploy the earlier `server.js` as a Netlify/Cloudflare/AWS Lambda function, but that file is now optional and can be removed.
+
+### Legacy Node backend
+The previously‑included Express server (`server.js`) is no longer required for serverless operation. You can delete it or keep it as a fallback if you decide to self‑host.
+
+### Persistence
+With Firebase the data lives in the cloud and is shared across all visitors. No local file is needed. You can switch to a traditional database later by replacing the Firebase code in `loadData`/`saveData`.
+
+### Notes
+- GitHub Pages only serves static files; backend storage must be on a separate service (Firebase, Netlify functions, etc.).
+- If you don't configure any backend, the app still works with built‑in defaults but changes are lost when the page reloads.
+
+
 
 
 ## Getting started

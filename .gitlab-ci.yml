@@ -1,0 +1,37 @@
+# simple GitLab CI pipeline to build and deploy the static site to GitHub
+# requires a CI variable GITHUB_TOKEN with repo:push permission
+
+image: node:18
+
+stages:
+  - test
+  - deploy
+
+before_script:
+  - echo "Running pipeline on $CI_COMMIT_BRANCH"
+
+test_job:
+  stage: test
+  script:
+    - npm install
+    - npm test
+  only:
+    - main
+    - master
+
+
+deploy_to_github:
+  stage: deploy
+  script:
+    - npm install  # if you have build dependencies
+    - npm run build || echo "no build step"
+    - git config --global user.email "ci@example.com"
+    - git config --global user.name "GitLab CI"
+    - |
+      # push the contents of the repo to GitHub
+      # make sure GITHUB_TOKEN is defined in CI settings
+      git remote add github https://$GITHUB_TOKEN@github.com/SreeshanthT/weddingest.git
+      git push --force github $CI_COMMIT_BRANCH
+  only:
+    - main
+    - master

@@ -1,0 +1,25 @@
+{
+  "name": "wedding",
+  "version": "1.0.0",
+  "description": "This repository contains a client‑side wedding clothing budget tracker. The UI is in `index.html` with separate `styles.css` and `script.js` files. A small Node.js backend (`server.js`) provides a JSON API so multiple family members can view and update the data. The frontend can be hosted on GitHub Pages while the backend runs on any Node‑friendly platform.",
+  "main": "script.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/yip4/wedding.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://gitlab.com/yip4/wedding/issues"
+  },
+  "homepage": "https://gitlab.com/yip4/wedding#readme",
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "jest-environment-jsdom": "^30.3.0"
+  }
+}

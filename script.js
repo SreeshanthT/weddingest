@@ -136,6 +136,93 @@ function updateLog(index, field, value) {
     saveData();
 }
 
+function clearPrice(index) {
+    data.logs[index].price = 0;
+    renderAll();
+    saveData();
+}
+
+// modal-based selection logic
+let currentModal = { type: null, row: null };
+
+function openModal(type, row) {
+    currentModal.type = type;
+    currentModal.row = row;
+    const title = type === 'member' ? 'Select Member' : 'Select Dress';
+    document.getElementById('modalTitle').innerText = title;
+    document.getElementById('modalSearch').value = '';
+    populateModalList('');
+    document.getElementById('selectionModal').classList.remove('hidden');
+    document.getElementById('modalSearch').focus();
+}
+
+function closeModal() {
+    currentModal.type = null;
+    currentModal.row = null;
+    document.getElementById('selectionModal').classList.add('hidden');
+}
+
+function populateModalList(filterText) {
+    const listEl = document.getElementById('modalList');
+    if (currentModal.type === 'member') {
+        const matches = data.members.filter(m => m.name.toLowerCase().includes(filterText));
+        listEl.innerHTML = matches.map(m =>
+            `<li class="px-2 py-1 hover:bg-gray-100 cursor-pointer" onclick="selectModal('${m.id}','${m.name}')">${m.name}</li>`
+        ).join('');
+    } else if (currentModal.type === 'dress') {
+        const matches = data.dresses.filter(d => {
+            const display = `${d.name} (₹${d.budget.toLocaleString()})`;
+            return display.toLowerCase().includes(filterText);
+        });
+        listEl.innerHTML = matches.map(d => {
+            const display = `${d.name} (₹${d.budget.toLocaleString()})`;
+            const safe = display.replace(/'/g, "\\'");
+            return `<li class="px-2 py-1 hover:bg-gray-100 cursor-pointer" onclick="selectModal('${d.id}','${safe}')">${display}</li>`;
+        }).join('');
+    }
+}
+
+function filterModal() {
+    const txt = document.getElementById('modalSearch').value.toLowerCase();
+    populateModalList(txt);
+}
+
+function selectModal(id, display) {
+    if (currentModal.row !== null) {
+        if (currentModal.type === 'member') {
+            updateLog(currentModal.row, 'memberId', id);
+        } else if (currentModal.type === 'dress') {
+            updateLog(currentModal.row, 'dressId', id);
+        }
+    }
+    closeModal();
+}
+
+function populateFilters() {
+    const memberSelect = document.getElementById('filterMember');
+    const dressSelect = document.getElementById('filterDress');
+    const prevMember = memberSelect ? memberSelect.value : '';
+    const prevDress = dressSelect ? dressSelect.value : '';
+    if (memberSelect) {
+        memberSelect.innerHTML = '<option value="">All Members</option>' + data.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+        memberSelect.value = prevMember;
+    }
+    if (dressSelect) {
+        dressSelect.innerHTML = '<option value="">All Dresses</option>' + data.dresses.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        dressSelect.value = prevDress;
+    }
+}
+
+function clearFilters() {
+    const memberSelect = document.getElementById('filterMember');
+    const dressSelect = document.getElementById('filterDress');
+    const statusSelect = document.getElementById('filterStatus');
+    if (memberSelect) memberSelect.value = '';
+    if (dressSelect) dressSelect.value = '';
+    if (statusSelect) statusSelect.value = '';
+    renderAll();
+}
+
 function renderAll() {
     // Render Dress Settings
     const dressBody = document.getElementById('dressTableBody');
@@ -146,6 +233,8 @@ function renderAll() {
                 <td class="p-3 border"><button onclick="deleteItem('dresses', ${i})" class="text-red-500 text-xs">Delete</button></td>
             </tr>
         `).join('');
+    const dressCountEl = document.getElementById('dressCount');
+    if (dressCountEl) dressCountEl.innerText = `(${data.dresses.length} types)`;
 
     // Render Members
     const memberBody = document.getElementById('memberTableBody');
@@ -155,13 +244,36 @@ function renderAll() {
                 <td class="p-3 border"><button onclick="deleteItem('members', ${i})" class="text-red-500 text-xs">Delete</button></td>
             </tr>
         `).join('');
+    const memberCountEl = document.getElementById('memberCount');
+    if (memberCountEl) memberCountEl.innerText = `(${data.members.length} people)`;
 
     // Render Log
     const logBody = document.getElementById('logTableBody');
     let totalEst = 0;
     let totalSpent = 0;
+    let purchasedCount = 0;
+    let pendingCount = 0;
 
-    logBody.innerHTML = data.logs.map((log, i) => {
+    // refresh filter options
+    populateFilters();
+
+    // read filter values
+    const memberFilter = document.getElementById('filterMember').value;
+    const dressFilter = document.getElementById('filterDress').value;
+    const statusFilter = document.getElementById('filterStatus').value;
+
+    const filteredLogs = data.logs.filter(log => {
+        const price = parseFloat(log.price) || 0;
+        const status = price > 0 ? "Purchased" : "Pending";
+        if (memberFilter && log.memberId !== memberFilter) return false;
+        if (dressFilter && log.dressId !== dressFilter) return false;
+        if (statusFilter && status !== statusFilter) return false;
+        return true;
+    });
+
+    const logsToRender = filteredLogs;
+
+    logBody.innerHTML = logsToRender.map((log, i) => {
         const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
         const est = dressInfo.budget;
         const price = parseFloat(log.price) || 0;
@@ -170,24 +282,28 @@ function renderAll() {
 
         totalEst += est;
         totalSpent += price;
+        if (status === 'Purchased') purchasedCount++;
+        else pendingCount++;
+
+        // display name value for inputs
+        const memberName = data.members.find(m => m.id === log.memberId)?.name || '';
+        const foundDress = data.dresses.find(d => d.id === log.dressId);
+        const dressName = foundDress ? `${foundDress.name} (₹${foundDress.budget.toLocaleString()})` : '';
 
         return `
                 <tr class="text-sm">
                     <td class="p-2 border">
-                        <select onchange="updateLog(${i}, 'memberId', this.value)" class="w-full p-1 bg-transparent">
-                            <option value="">Select Member</option>
-                            ${data.members.map(m => `<option value="${m.id}" ${log.memberId === m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
-                        </select>
+                        <button onclick="openModal('member', ${i})" class="w-full text-left p-1 bg-transparent">${memberName || 'Select Member'}</button>
                     </td>
                     <td class="p-2 border">
-                        <select onchange="updateLog(${i}, 'dressId', this.value)" class="w-full p-1 bg-transparent">
-                            <option value="">Select Dress</option>
-                            ${data.dresses.map(d => `<option value="${d.id}" ${log.dressId === d.id ? 'selected' : ''}>${d.name}</option>`).join('')}
-                        </select>
+                        <button onclick="openModal('dress', ${i})" class="w-full text-left p-1 bg-transparent">${dressName || 'Select Dress'}</button>
                     </td>
                     <td class="p-2 border bg-gray-50 font-mono">₹${est.toLocaleString()}</td>
                     <td class="p-2 border">
-                        <input type="number" value="${log.price}" onchange="updateLog(${i}, 'price', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200">
+                        <div class="flex items-center gap-1">
+                            <input type="number" value="${log.price}" onchange="updateLog(${i}, 'price', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200">
+                            <button onclick="clearPrice(${i})" class="text-blue-500 hover:text-blue-700 text-xs">Clear</button>
+                        </div>
                     </td>
                     <td class="p-2 border font-mono ${savings < 0 ? 'text-red-600' : 'text-green-600'}">
                         ${savings > 0 ? '+' : ''}${savings.toLocaleString()}
@@ -208,7 +324,30 @@ function renderAll() {
     document.getElementById('statTotalEst').innerText = '₹' + totalEst.toLocaleString();
     document.getElementById('statTotalSpent').innerText = '₹' + totalSpent.toLocaleString();
     document.getElementById('statVariance').innerText = '₹' + (totalEst - totalSpent).toLocaleString();
+    const purchasedEl = document.getElementById('statPurchasedCount');
+    const pendingEl = document.getElementById('statPendingCount');
+    if (purchasedEl) purchasedEl.innerText = purchasedCount;
+    if (pendingEl) pendingEl.innerText = pendingCount;
 }
+
+// hide suggestion lists when clicking outside
+function hideAllLists() {
+    document.querySelectorAll('[id^="memberList-"],[id^="dressList-"]').forEach(l => l.classList.add('hidden'));
+}
+
+// close modal when clicking on background
+document.getElementById('selectionModal').addEventListener('click', (e) => {
+    if (e.target.id === 'selectionModal') {
+        closeModal();
+    }
+});
+
+// global click listener
+document.addEventListener('click', (e) => {
+    if (!e.target.matches('input[id^="memberInput-"]') && !e.target.matches('input[id^="dressInput-"]')) {
+        hideAllLists();
+    }
+});
 
 function exportCSV() {
     let csv = "Member,Dress Type,Estimated Budget,Actual Price,Status\n";

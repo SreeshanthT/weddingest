@@ -28,7 +28,7 @@
 
     <!-- Tab 1: Dress Settings -->
     <div id="settings" class="tab-content active bg-white p-6 rounded-lg shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">Master Price List</h2>
+        <h2 class="text-xl font-semibold mb-4">Master Price List <span id="dressCount" class="text-sm text-gray-600"></span></h2>
         <div class="flex gap-4 mb-4 flex-wrap">
             <input type="text" id="newDressType" placeholder="Dress Type (e.g. Kerala Saree)" class="border p-2 rounded flex-1 min-w-[200px]">
             <input type="number" id="newDressBudget" placeholder="Max Budget" class="border p-2 rounded w-32">
@@ -48,7 +48,7 @@
 
     <!-- Tab 2: Members -->
     <div id="members" class="tab-content bg-white p-6 rounded-lg shadow-sm">
-        <h2 class="text-xl font-semibold mb-4">Add Family Members</h2>
+        <h2 class="text-xl font-semibold mb-4">Add Family Members <span id="memberCount" class="text-sm text-gray-600"></span></h2>
         <div class="flex gap-4 mb-4">
             <input type="text" id="newMemberName" placeholder="Full Name" class="border p-2 rounded flex-1">
             <button onclick="addMember()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Add Member</button>
@@ -79,6 +79,29 @@
                 <p class="text-sm text-orange-600 font-medium">Budget Variance</p>
                 <h3 class="text-2xl font-bold text-orange-900" id="statVariance">₹0</h3>
             </div>
+            <div class="bg-purple-50 p-4 rounded-lg">
+                <p class="text-sm text-purple-600 font-medium">Purchased Count</p>
+                <h3 class="text-2xl font-bold text-purple-900" id="statPurchasedCount">0</h3>
+            </div>
+            <div class="bg-yellow-50 p-4 rounded-lg">
+                <p class="text-sm text-yellow-600 font-medium">Pending Count</p>
+                <h3 class="text-2xl font-bold text-yellow-900" id="statPendingCount">0</h3>
+            </div>
+        </div>
+        <!-- filters -->
+        <div class="mb-4 flex flex-wrap gap-4 items-center">
+            <select id="filterMember" onchange="renderAll()" class="border p-2 rounded">
+                <option value="">All Members</option>
+            </select>
+            <select id="filterDress" onchange="renderAll()" class="border p-2 rounded">
+                <option value="">All Dresses</option>
+            </select>
+            <select id="filterStatus" onchange="renderAll()" class="border p-2 rounded">
+                <option value="">All Statuses</option>
+                <option value="Pending">Pending</option>
+                <option value="Purchased">Purchased</option>
+            </select>
+            <button onclick="clearFilters()" class="bg-gray-200 px-3 py-1 rounded text-sm">Reset Filters</button>
         </div>
 
         <h2 class="text-xl font-semibold mb-4">Shopping Record</h2>
@@ -97,6 +120,18 @@
                 </thead>
                 <tbody id="logTableBody"></tbody>
             </table>
+        </div>
+
+        <!-- selection modal -->
+        <div id="selectionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+            <div class="bg-white rounded-lg w-11/12 max-w-md p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg font-medium">Select</h3>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-800">✕</button>
+                </div>
+                <input type="text" id="modalSearch" placeholder="Search..." class="w-full border p-2 rounded mb-2" oninput="filterModal()">
+                <ul id="modalList" class="max-h-64 overflow-auto"></ul>
+            </div>
         </div>
         <div class="mt-6 flex flex-wrap gap-2">
             <button onclick="addRow()" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 text-sm">+ Add Row</button>

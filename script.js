@@ -125,6 +125,14 @@ function addRow() {
 }
 
 function deleteItem(arrayName, index) {
+    // confirm before deleting anything
+    if (!confirm('Are you sure you want to delete this item?')) {
+        return;
+    }
+    if (!isAdmin && (arrayName === 'dresses' || arrayName === 'members')) {
+        alert('Only admin can delete master data');
+        return;
+    }
     data[arrayName].splice(index, 1);
     renderAll();
     saveData();

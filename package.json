@@ -4,7 +4,7 @@
   "description": "This repository contains a client‑side wedding clothing budget tracker. The UI is in `index.html` with separate `styles.css` and `script.js` files. A small Node.js backend (`server.js`) provides a JSON API so multiple family members can view and update the data. The frontend can be hosted on GitHub Pages while the backend runs on any Node‑friendly platform.",
   "main": "script.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "repository": {
     "type": "git",

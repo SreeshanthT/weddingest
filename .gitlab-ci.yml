@@ -30,8 +30,10 @@ deploy_to_github:
       # push the contents of the repo to GitHub
       # make sure GITHUB_TOKEN is defined in CI settings
       git remote add github https://$GITHUB_TOKEN@github.com/SreeshanthT/weddingest.git
-      # use the branch being built instead of hard‑coding "main"
-      git push --force github $CI_COMMIT_REF_NAME
+      # GitLab clones in detached HEAD so we may not have a local branch name;
+      # push the current HEAD explicitly to the target branch instead of
+      # referring to a possibly-missing refspec.
+      git push --force github HEAD:$CI_COMMIT_REF_NAME
   only:
     - main
     - master

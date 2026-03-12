@@ -292,6 +292,7 @@ function renderAll() {
     let totalSpent = 0;
     let purchasedCount = 0;
     let pendingCount = 0;
+    let totalCount = 0;
 
     // refresh filter options
     populateFilters();
@@ -321,6 +322,7 @@ function renderAll() {
 
         totalEst += est;
         totalSpent += price;
+        totalCount++;
         if (status === 'Purchased') purchasedCount++;
         else pendingCount++;
 
@@ -363,8 +365,10 @@ function renderAll() {
     document.getElementById('statTotalEst').innerText = '₹' + totalEst.toLocaleString();
     document.getElementById('statTotalSpent').innerText = '₹' + totalSpent.toLocaleString();
     document.getElementById('statVariance').innerText = '₹' + (totalEst - totalSpent).toLocaleString();
+    const totalEl = document.getElementById('statTotalCount');
     const purchasedEl = document.getElementById('statPurchasedCount');
     const pendingEl = document.getElementById('statPendingCount');
+    if (totalEl) totalEl.innerText = totalCount;
     if (purchasedEl) purchasedEl.innerText = purchasedCount;
     if (pendingEl) pendingEl.innerText = pendingCount;
 }

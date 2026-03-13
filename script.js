@@ -82,7 +82,7 @@ let data = {
         { id: "m3", name: "Amma" }
     ],
     logs: [
-        { id: "l1", memberId: "m1", dressId: "d1", price: 7200 }
+        { id: "l1", memberId: "m1", dressId: "d1", price: 7200, count: 1 }
     ]
 };
 
@@ -115,6 +115,14 @@ async function loadData() {
                     const foundDress = data.dresses.find(dress => dress.name === log.type);
                     log.dressId = foundDress ? foundDress.id : "";
                     delete log.type;
+                }
+                // ensure count exists and is at least 1
+                if (log.count == null || Number(log.count) < 1) {
+                    log.count = 1;
+                }
+                // ensure purchasedCount exists (can be 0 when not purchased yet)
+                if (log.purchasedCount == null || Number(log.purchasedCount) < 0) {
+                    log.purchasedCount = 0;
                 }
             });
         }
@@ -168,7 +176,7 @@ function addMember() {
 }
 
 function addRow() {
-    data.logs.push({ id: 'l_' + Date.now() + '_' + Math.floor(Math.random() * 1000), memberId: "", dressId: "", price: 0 });
+    data.logs.push({ id: 'l_' + Date.now() + '_' + Math.floor(Math.random() * 1000), memberId: "", dressId: "", price: 0, count: 1, purchasedCount: 0 });
     renderAll();
     saveData();
 }
@@ -215,13 +223,36 @@ function editMember(index) {
 }
 
 function updateLog(index, field, value) {
-    data.logs[index][field] = value;
+    if (field === 'price') {
+        const num = parseFloat(value);
+        data.logs[index].price = isNaN(num) ? 0 : num;
+    } else if (field === 'count') {
+        const num = parseInt(value);
+        data.logs[index].count = isNaN(num) || num < 1 ? 1 : num;
+    } else if (field === 'purchasedCount') {
+        const num = parseInt(value);
+        data.logs[index].purchasedCount = isNaN(num) || num < 0 ? 0 : num;
+    } else {
+        data.logs[index][field] = value;
+    }
     renderAll();
     saveData();
 }
 
 function clearPrice(index) {
+    if (!confirm('Are you sure you want to clear the actual price for this row?')) {
+        return;
+    }
     data.logs[index].price = 0;
+    renderAll();
+    saveData();
+}
+
+function clearPurchasedCount(index) {
+    if (!confirm('Are you sure you want to clear the purchased quantity for this row?')) {
+        return;
+    }
+    data.logs[index].purchasedCount = 0;
     renderAll();
     saveData();
 }
@@ -367,15 +398,19 @@ function renderAll() {
     logBody.innerHTML = logsToRender.map((log, i) => {
         const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
         const est = dressInfo.budget;
+        const count = Math.max(1, parseInt(log.count) || 1);
+        const purchasedCountVal = Math.max(0, parseInt(log.purchasedCount) || 0);
         const price = parseFloat(log.price) || 0;
-        const savings = est > 0 ? est - price : 0;
-        const status = price > 0 ? "Purchased" : "Pending";
+        const totalEstForRow = est * count;
+        const totalSpentForRow = price * purchasedCountVal;
+        const savings = totalEstForRow - totalSpentForRow;
+        const status = purchasedCountVal >= count ? "Purchased" : "Pending";
 
-        totalEst += est;
-        totalSpent += price;
-        totalCount++;
-        if (status === 'Purchased') purchasedCount++;
-        else pendingCount++;
+        totalEst += totalEstForRow;
+        totalSpent += totalSpentForRow;
+        totalCount += count;
+        purchasedCount += purchasedCountVal;
+        pendingCount += Math.max(0, count - purchasedCountVal);
 
         // display name value for inputs
         const memberName = data.members.find(m => m.id === log.memberId)?.name || '';
@@ -390,7 +425,16 @@ function renderAll() {
                     <td class="p-2 border">
                         <button onclick="openModal('dress', ${i})" class="w-full text-left p-1 bg-transparent">${dressName || 'Select Dress'}</button>
                     </td>
-                    <td class="p-2 border bg-gray-50 font-mono">₹${est.toLocaleString()}</td>
+                    <td class="p-2 border">
+                        <input type="number" min="1" value="${count}" onchange="updateLog(${i}, 'count', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Planned quantity">
+                    </td>
+                    <td class="p-2 border">
+                        <div class="flex items-center gap-1">
+                            <input type="number" min="0" value="${purchasedCountVal}" onchange="updateLog(${i}, 'purchasedCount', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Actual quantity purchased">
+                            <button onclick="clearPurchasedCount(${i})" class="text-blue-500 hover:text-blue-700 text-xs">Clear</button>
+                        </div>
+                    </td>
+                    <td class="p-2 border bg-gray-50 font-mono">₹${totalEstForRow.toLocaleString()}</td>
                     <td class="p-2 border">
                         <div class="flex items-center gap-1">
                             <input type="number" value="${log.price}" onchange="updateLog(${i}, 'price', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200">
@@ -447,11 +491,15 @@ document.addEventListener('click', (e) => {
 });
 
 function exportCSV() {
-    let csv = "Member,Dress Type,Estimated Budget,Actual Price,Status\n";
+    let csv = "Member,Dress Type,Qty Planned,Qty Purchased,Estimated Budget,Actual Price,Status\n";
     data.logs.forEach(log => {
         const dress = data.dresses.find(d => d.id === log.dressId) || { name: 'Unknown', budget: 0 };
         const member = data.members.find(m => m.id === log.memberId) || { name: 'Unknown' };
-        csv += `${member.name},${dress.name},${dress.budget},${log.price},${log.price > 0 ? 'Purchased' : 'Pending'}\n`;
+        const count = Math.max(1, parseInt(log.count) || 1);
+        const purchasedCountVal = Math.max(0, parseInt(log.purchasedCount) || 0);
+        const price = parseFloat(log.price) || 0;
+        const status = purchasedCountVal >= count ? 'Purchased' : 'Pending';
+        csv += `${member.name},${dress.name},${count},${purchasedCountVal},${dress.budget * count},${price * purchasedCountVal},${status}\n`;
     });
 
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -474,14 +522,21 @@ function exportToExcel() {
         const rowNum = i + 2; // Offset for header in Excel
         const dress = data.dresses.find(d => d.id === log.dressId) || { name: 'Unknown', budget: 0 };
         const member = data.members.find(m => m.id === log.memberId) || { name: 'Unknown' };
+        const count = Math.max(1, parseInt(log.count) || 1);
+        const purchasedCountVal = Math.max(0, parseInt(log.purchasedCount) || 0);
+        const estTotal = dress.budget * count;
+        const actualTotal = (parseFloat(log.price) || 0) * purchasedCountVal;
+        const statusFormula = `IF(F${rowNum}>=C${rowNum}, "Purchased", "Pending")`;
         return `
                 <tr>
                     <td>${member.name}</td>
                     <td>${dress.name}</td>
-                    <td>${dress.budget}</td>
-                    <td>${log.price || 0}</td>
-                    <td>=C${rowNum}-D${rowNum}</td>
-                    <td>=IF(D${rowNum}>0, "Purchased", "Pending")</td>
+                    <td>${count}</td>
+                    <td>${purchasedCountVal}</td>
+                    <td>${estTotal}</td>
+                    <td>${actualTotal}</td>
+                    <td>=E${rowNum}-F${rowNum}</td>
+                    <td>${statusFormula}</td>
                 </tr>
             `;
     }).join('');
@@ -494,7 +549,7 @@ function exportToExcel() {
             </x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
             <body>
                 <table>
-                    <thead><tr><th>Member</th><th>Dress Type</th><th>Est Budget</th><th>Actual Price</th><th>Savings</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Member</th><th>Dress Type</th><th>Qty Planned</th><th>Qty Purchased</th><th>Est Budget</th><th>Actual Price</th><th>Savings</th><th>Status</th></tr></thead>
                     <tbody>${logRows}</tbody>
                 </table>
                 <br>

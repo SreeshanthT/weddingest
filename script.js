@@ -508,28 +508,36 @@ function renderAll() {
         const foundDress = data.dresses.find(d => d.id === log.dressId);
         const dressName = foundDress ? `${foundDress.name} (₹${foundDress.budget.toLocaleString()})` : '';
 
+        // Find the absolute index in data.logs for mapping back
+        const absoluteIndex = data.logs.indexOf(log);
+
         return `
-                <tr class="text-sm">
-                    <td class="p-2 border">
-                        <button onclick="openModal('member', ${i})" class="w-full text-left p-1 bg-transparent">${memberName || 'Select Member'}</button>
+                <tr class="text-sm cursor-default" draggable="true" data-index="${absoluteIndex}" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                    <td class="p-2 border text-center text-gray-300">
+                        <div class="cursor-move p-1 hover:text-gray-600" title="Drag to reorder">
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 7h2v2H7V7zm3 0h2v2h-2V7zM7 10h2v2H7v-2zm3 0h2v2h-2v-2zm-3 3h2v2H7v-2zm3 0h2v2h-2v-2z"></path></svg>
+                        </div>
                     </td>
                     <td class="p-2 border">
-                        <button onclick="openModal('dress', ${i})" class="w-full text-left p-1 bg-transparent">${dressName || 'Select Dress'}</button>
+                        <button onclick="openModal('member', ${absoluteIndex})" class="w-full text-left p-1 bg-transparent">${memberName || 'Select Member'}</button>
                     </td>
                     <td class="p-2 border">
-                        <input type="number" min="1" value="${count}" onchange="updateLog(${i}, 'count', this.value)" ${!allowEditPlannedQty ? 'disabled' : ''} class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Planned quantity">
+                        <button onclick="openModal('dress', ${absoluteIndex})" class="w-full text-left p-1 bg-transparent">${dressName || 'Select Dress'}</button>
+                    </td>
+                    <td class="p-2 border">
+                        <input type="number" min="1" value="${count}" onchange="updateLog(${absoluteIndex}, 'count', this.value)" ${!allowEditPlannedQty ? 'disabled' : ''} class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Planned quantity">
                     </td>
                     <td class="p-2 border">
                         <div class="flex items-center gap-1">
-                            <input type="number" min="0" value="${purchasedCountVal}" onchange="updateLog(${i}, 'purchasedCount', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Actual quantity purchased">
-                            <button onclick="clearPurchasedCount(${i})" class="text-blue-500 hover:text-blue-700 text-xs">Clear</button>
+                            <input type="number" min="0" value="${purchasedCountVal}" onchange="updateLog(${absoluteIndex}, 'purchasedCount', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Actual quantity purchased">
+                            <button onclick="clearPurchasedCount(${absoluteIndex})" class="text-blue-500 hover:text-blue-700 text-xs">Clear</button>
                         </div>
                     </td>
                     <td class="p-2 border bg-gray-50 font-mono">₹${totalEstForRow.toLocaleString()}</td>
                     <td class="p-2 border">
                         <div class="flex items-center gap-1">
-                            <input type="number" value="${log.price}" onchange="updateLog(${i}, 'price', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200">
-                            <button onclick="clearPrice(${i})" class="text-blue-500 hover:text-blue-700 text-xs">Clear</button>
+                            <input type="number" value="${log.price}" onchange="updateLog(${absoluteIndex}, 'price', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200">
+                            <button onclick="clearPrice(${absoluteIndex})" class="text-blue-500 hover:text-blue-700 text-xs">Clear</button>
                         </div>
                     </td>
                     <td class="p-2 border font-mono ${savings < 0 ? 'text-red-600' : 'text-green-600'}">
@@ -541,7 +549,7 @@ function renderAll() {
                         </span>
                     </td>
                     <td class="p-2 border text-center">
-                        ${canDelete ? `<button onclick="deleteItem('logs', ${i})" class="text-gray-400 hover:text-red-500">✕</button>` : ''}
+                        ${canDelete ? `<button onclick="deleteItem('logs', ${absoluteIndex})" class="text-gray-400 hover:text-red-500">✕</button>` : ''}
                     </td>
                 </tr>
             `;
@@ -709,6 +717,36 @@ window.togglePermission = togglePermission;
 window.exportCSV = exportCSV;
 window.exportToExcel = exportToExcel;
 window.toggleEditPlanned = toggleEditPlanned;
+
+// drag and drop logic
+let draggedIdx = null;
+
+function handleDragStart(e) {
+    draggedIdx = parseInt(e.currentTarget.getAttribute('data-index'));
+    e.dataTransfer.effectAllowed = 'move';
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const targetIdx = parseInt(e.currentTarget.getAttribute('data-index'));
+    if (draggedIdx !== null && draggedIdx !== targetIdx) {
+        // Rearrange logs in memory
+        const item = data.logs.splice(draggedIdx, 1)[0];
+        data.logs.splice(targetIdx, 0, item);
+        renderAll();
+        saveData();
+    }
+    draggedIdx = null;
+}
+
+window.handleDragStart = handleDragStart;
+window.handleDragOver = handleDragOver;
+window.handleDrop = handleDrop;
 
 // Initial render
 window.onload = async () => {

@@ -78,17 +78,10 @@ auth.onAuthStateChanged(async (user) => {
 // In-memory data store (populated from backend or defaults)
 let data = {
     dresses: [
-        { id: "d1", name: "Kerala Saree", budget: 8000 },
-        { id: "d2", name: "Bridal Lehenga", budget: 45000 },
-        { id: "d3", name: "Groom Suit", budget: 20000 }
     ],
     members: [
-        { id: "m1", name: "Anjali" },
-        { id: "m2", name: "Rahul" },
-        { id: "m3", name: "Amma" }
     ],
     logs: [
-        { id: "l1", memberId: "m1", dressId: "d1", price: 7200, count: 1 }
     ],
     settings: {
         allowEditPlannedQty: false

@@ -21,6 +21,53 @@ const app = firebase.initializeApp(firebaseConfig);
 // analytics isn't used in this app and the analytics script isn't included,
 // so skip calling firebase.analytics() to avoid the runtime error.
 const db = firebase.database();
+const auth = firebase.auth();
+const provider = new firebase.auth.GoogleAuthProvider();
+
+let currentUser = null;
+let isAdmin = false;
+const ADMIN_EMAIL = 'sreeshanththekkedath8@gmail.com';
+
+function loginWithGoogle() {
+    auth.signInWithPopup(provider).catch(console.error);
+}
+
+function logout() {
+    auth.signOut().catch(console.error);
+}
+
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        currentUser = user;
+        isAdmin = (user.email === ADMIN_EMAIL);
+        
+        document.getElementById('loginBtn').classList.add('hidden');
+        document.getElementById('userInfo').classList.remove('hidden');
+        document.getElementById('userNameDisplay').innerText = user.displayName || user.email;
+        
+        document.getElementById('appContent').classList.remove('hidden');
+        
+        // Hide/show tabs based on role
+        if (!isAdmin) {
+            document.getElementById('tab-settings').style.display = 'none';
+            document.getElementById('tab-members').style.display = 'none';
+            showTab('purchase');
+        } else {
+            document.getElementById('tab-settings').style.display = 'inline-block';
+            document.getElementById('tab-members').style.display = 'inline-block';
+            showTab('settings');
+        }
+        
+        await loadData();
+        renderAll();
+    } else {
+        currentUser = null;
+        isAdmin = false;
+        document.getElementById('loginBtn').classList.remove('hidden');
+        document.getElementById('userInfo').classList.add('hidden');
+        document.getElementById('appContent').classList.add('hidden');
+    }
+});
 
 // In-memory data store (populated from backend or defaults)
 let data = {
@@ -97,6 +144,7 @@ function showTab(tabId) {
 }
 
 function addDressType() {
+    if (!isAdmin) return alert('Only admin can add master data');
     const name = document.getElementById('newDressType').value;
     const budget = parseFloat(document.getElementById('newDressBudget').value);
     if (name && budget) {
@@ -109,6 +157,7 @@ function addDressType() {
 }
 
 function addMember() {
+    if (!isAdmin) return alert('Only admin can add master data');
     const name = document.getElementById('newMemberName').value;
     if (name) {
         data.members.push({ id: 'm_' + Date.now() + '_' + Math.floor(Math.random() * 1000), name });
@@ -139,6 +188,7 @@ function deleteItem(arrayName, index) {
 }
 
 function editDress(index) {
+    if (!isAdmin) return alert('Only admin can edit master data');
     const d = data.dresses[index];
     const newName = prompt('Dress type name:', d.name);
     if (newName === null) return;
@@ -153,6 +203,7 @@ function editDress(index) {
 }
 
 function editMember(index) {
+    if (!isAdmin) return alert('Only admin can edit master data');
     const m = data.members[index];
     const newName = prompt('Member name:', m.name);
     if (newName === null) return;
@@ -379,11 +430,14 @@ function hideAllLists() {
 }
 
 // close modal when clicking on background
-document.getElementById('selectionModal').addEventListener('click', (e) => {
-    if (e.target.id === 'selectionModal') {
-        closeModal();
-    }
-});
+const selectionModalEl = document.getElementById('selectionModal');
+if (selectionModalEl) {
+    selectionModalEl.addEventListener('click', (e) => {
+        if (e.target.id === 'selectionModal') {
+            closeModal();
+        }
+    });
+}
 
 // global click listener
 document.addEventListener('click', (e) => {
@@ -461,6 +515,8 @@ function exportToExcel() {
 }
 
 // expose functions used by inline event handlers so they live on the global scope
+window.loginWithGoogle = loginWithGoogle;
+window.logout = logout;
 // (modules are scoped to themselves and don't automatically export to window)
 window.showTab = showTab;
 window.addDressType = addDressType;
@@ -473,8 +529,7 @@ window.exportToExcel = exportToExcel;
 
 // Initial render
 window.onload = async () => {
-    await loadData();
-    renderAll();
+    // handled by auth state changed watcher
 };
 
 if (typeof module !== 'undefined' && module.exports) {

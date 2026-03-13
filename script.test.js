@@ -14,8 +14,17 @@ global.firebase = {
   initializeApp: jest.fn(() => ({})),
   database: jest.fn(() => ({
     ref: global.mockRef
-  }))
+  })),
+  auth: {
+    GoogleAuthProvider: jest.fn()
+  }
 };
+global.firebase.auth = jest.fn(() => ({
+    signInWithPopup: jest.fn(),
+    signOut: jest.fn(),
+    onAuthStateChanged: jest.fn()
+}));
+global.firebase.auth.GoogleAuthProvider = jest.fn();
 
 const script = require('./script.js');
 

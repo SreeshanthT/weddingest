@@ -1,0 +1,41 @@
+﻿node.exe : FAIL ./script.test.js
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (FA 
+   IL ./script.test.js:String) [], RemoteExcep  
+  tion
+    + FullyQualifiedErrorId : NativeCommandErro 
+   r
+ 
+  ΓùÅ Test suite failed to run
+
+    TypeError: Cannot read properties of null 
+(reading 'addEventListener')
+
+    [0m [90m 431 |[39m
+     [90m 432 |[39m [90m// close modal when 
+clicking on background[39m
+    [31m[1m>[22m[39m[90m 433 |[39m documen
+t[33m.[39mgetElementById([32m'selectionModal'
+[39m)[33m.[39maddEventListener([32m'click'[
+39m[33m,[39m (e) [33m=>[39m {
+     [90m     |[39m                           
+               [31m[1m^[22m[39m
+     [90m 434 |[39m     [36mif[39m 
+(e[33m.[39mtarget[33m.[39mid [33m===[39m 
+[32m'selectionModal'[39m) {
+     [90m 435 |[39m         
+closeModal()[33m;[39m
+     [90m 436 |[39m     }[0m
+
+      at Object.<anonymous> (script.js:433:42)
+      at Object.require (script.test.js:29:16)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        1.567 s
+Ran all test suites.

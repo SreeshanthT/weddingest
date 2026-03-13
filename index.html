@@ -39,6 +39,7 @@
         <button onclick="showTab('settings')" id="tab-settings" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition active">1. Dress Settings</button>
         <button onclick="showTab('members')" id="tab-members" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">2. Family Members</button>
         <button onclick="showTab('purchase')" id="tab-purchase" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">3. Purchase Log & Tracker</button>
+        <button onclick="showTab('app-users')" id="tab-app-users" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition" style="display: none;">4. App Users</button>
     </div>
 
     <!-- Tab 1: Dress Settings -->
@@ -167,6 +168,27 @@
             <button onclick="exportToExcel()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm font-bold">Download Excel Spreadsheet (.xls)</button>
             <button onclick="exportCSV()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">Export Data Only (.csv)</button>
         </div>
+    </div>
+
+    <!-- Tab 4: App Users -->
+    <div id="app-users" class="tab-content bg-white p-6 rounded-lg shadow-sm">
+        <h2 class="text-xl font-semibold mb-4">Manage User Permissions</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr class="bg-gray-50 text-sm">
+                        <th class="p-3 border">Name</th>
+                        <th class="p-3 border">Email</th>
+                        <th class="p-3 border text-center">Dress Settings</th>
+                        <th class="p-3 border text-center">Family Members</th>
+                        <th class="p-3 border text-center">Purchase Log</th>
+                    </tr>
+                </thead>
+                <tbody id="appUsersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
     </div>
     </div>
     </div>

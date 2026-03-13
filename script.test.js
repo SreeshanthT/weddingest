@@ -37,7 +37,8 @@ describe('script.js loadData and saveData tests', () => {
         script.setData({
             dresses: [],
             members: [],
-            logs: []
+            logs: [],
+            appUsers: []
         });
     });
 
@@ -46,6 +47,7 @@ describe('script.js loadData and saveData tests', () => {
             dresses: [{ id: "d1", name: "Test Dress", budget: 100 }],
             members: [{ id: "m1", name: "Test Member" }],
             logs: [],
+            appUsers: [],
             settings: { allowEditPlannedQty: false }
         };
         

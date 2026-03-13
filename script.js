@@ -53,18 +53,45 @@ auth.onAuthStateChanged(async (user) => {
         
         document.getElementById('appContent').classList.remove('hidden');
         
+        await loadData(); // Initial load
+        
+        // Ensure user is registered and has permissions
+        let currentUserData = data.appUsers.find(u => u.email === user.email);
+        if (!currentUserData && !isAdmin) {
+            currentUserData = {
+                id: user.uid, // Use Firebase UID for persistence
+                email: user.email,
+                name: user.displayName || user.email,
+                permissions: { settings: false, members: false, purchase: true }
+            };
+            data.appUsers.push(currentUserData);
+            await saveData();
+        }
+
         // Hide/show tabs based on role
         if (!isAdmin) {
-            document.getElementById('tab-settings').style.display = 'none';
-            document.getElementById('tab-members').style.display = 'none';
-            showTab('purchase');
+            document.getElementById('tab-app-users').style.display = 'none';
+            if (currentUserData) {
+                document.getElementById('tab-settings').style.display = currentUserData.permissions.settings ? 'inline-block' : 'none';
+                document.getElementById('tab-members').style.display = currentUserData.permissions.members ? 'inline-block' : 'none';
+                document.getElementById('tab-purchase').style.display = currentUserData.permissions.purchase ? 'inline-block' : 'none';
+                
+                // Show most relevant tab they have access to
+                if (currentUserData.permissions.purchase) showTab('purchase');
+                else if (currentUserData.permissions.settings) showTab('settings');
+                else if (currentUserData.permissions.members) showTab('members');
+                else document.getElementById('appContent').classList.add('hidden');
+            }
         } else {
             document.getElementById('tab-settings').style.display = 'inline-block';
             document.getElementById('tab-members').style.display = 'inline-block';
-            showTab('settings');
+            document.getElementById('tab-purchase').style.display = 'inline-block';
+            document.getElementById('tab-app-users').style.display = 'inline-block';
+            showTab('app-users');
         }
         
-        await loadData();
+        // Start real-time sync for conflict prevention
+        startSync();
         renderAll();
     } else {
         currentUser = null;
@@ -83,6 +110,7 @@ let data = {
     ],
     logs: [
     ],
+    appUsers: [],
     settings: {
         allowEditPlannedQty: false
     }
@@ -99,6 +127,7 @@ async function loadData() {
             data.dresses = val.dresses || [];
             data.members = val.members || [];
             data.logs = val.logs || [];
+            data.appUsers = val.appUsers || [];
             data.settings = val.settings || { allowEditPlannedQty: false };
             
             // Set global from settings
@@ -135,6 +164,25 @@ async function loadData() {
     } catch (e) {
         console.warn('failed to load data from Firebase', e);
     }
+}
+
+// Conflict prevention: Real-time synchronization
+function startSync() {
+    db.ref(dataRef).on('value', (snapshot) => {
+        if (snapshot.exists()) {
+            const val = snapshot.val();
+            // Update local memory with external changes
+            data.dresses = val.dresses || [];
+            data.members = val.members || [];
+            data.logs = val.logs || [];
+            data.appUsers = val.appUsers || [];
+            data.settings = val.settings || { allowEditPlannedQty: false };
+            allowEditPlannedQty = data.settings.allowEditPlannedQty;
+            
+            console.log('Sync active: Latest data pulled from Firebase');
+            renderAll();
+        }
+    });
 }
 
 async function saveData() {
@@ -253,6 +301,13 @@ function clearPrice(index) {
         return;
     }
     data.logs[index].price = 0;
+    renderAll();
+    saveData();
+}
+
+function togglePermission(index, permissionKey) {
+    if (!isAdmin) return alert('Only admins can change user permissions.');
+    data.appUsers[index].permissions[permissionKey] = !data.appUsers[index].permissions[permissionKey];
     renderAll();
     saveData();
 }
@@ -489,6 +544,26 @@ function renderAll() {
     if (totalEl) totalEl.innerText = totalCount;
     if (purchasedEl) purchasedEl.innerText = purchasedCount;
     if (pendingEl) pendingEl.innerText = pendingCount;
+
+    // Render App Users (Admins only)
+    if (isAdmin) {
+        const appUsersBody = document.getElementById('appUsersTableBody');
+        appUsersBody.innerHTML = data.appUsers.map((u, i) => `
+            <tr class="text-sm border-b">
+                <td class="p-3">${u.name}</td>
+                <td class="p-3 text-gray-500">${u.email}</td>
+                <td class="p-3 text-center">
+                    <input type="checkbox" ${u.permissions.settings ? 'checked' : ''} onchange="togglePermission(${i}, 'settings')" class="w-4 h-4 text-indigo-600 rounded">
+                </td>
+                <td class="p-3 text-center">
+                    <input type="checkbox" ${u.permissions.members ? 'checked' : ''} onchange="togglePermission(${i}, 'members')" class="w-4 h-4 text-indigo-600 rounded">
+                </td>
+                <td class="p-3 text-center">
+                    <input type="checkbox" ${u.permissions.purchase ? 'checked' : ''} onchange="togglePermission(${i}, 'purchase')" class="w-4 h-4 text-indigo-600 rounded">
+                </td>
+            </tr>
+        `).join('');
+    }
 }
 
 // hide suggestion lists when clicking outside
@@ -600,6 +675,9 @@ window.addMember = addMember;
 window.addRow = addRow;
 window.deleteItem = deleteItem;
 window.updateLog = updateLog;
+window.clearPrice = clearPrice;
+window.clearPurchasedCount = clearPurchasedCount;
+window.togglePermission = togglePermission;
 window.exportCSV = exportCSV;
 window.exportToExcel = exportToExcel;
 window.toggleEditPlanned = toggleEditPlanned;

@@ -36,11 +36,11 @@ let currentGroupingCriteria = 'group'; // 'group', 'member', or 'dress'
 const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const dataRef = isDev ? '/test' : '/data';
 
-window.loginWithGoogle = function() {
+window.loginWithGoogle = function () {
     auth.signInWithPopup(provider).catch(console.error);
 };
 
-window.logout = function() {
+window.logout = function () {
     auth.signOut().catch(console.error);
 };
 
@@ -48,15 +48,15 @@ auth.onAuthStateChanged(async (user) => {
     if (user) {
         currentUser = user;
         isAdmin = (user.email === ADMIN_EMAIL);
-        
+
         document.getElementById('loginBtn').classList.add('hidden');
         document.getElementById('userInfo').classList.remove('hidden');
         document.getElementById('userNameDisplay').innerText = user.displayName || user.email;
-        
+
         document.getElementById('appContent').classList.remove('hidden');
-        
+
         await loadData(); // Initial load
-        
+
         // Ensure user is registered and has permissions
         let currentUserData = data.appUsers.find(u => u.email === user.email);
         if (!currentUserData && !isAdmin) {
@@ -79,7 +79,7 @@ auth.onAuthStateChanged(async (user) => {
                 document.getElementById('tab-members').style.display = currentUserData.permissions.members ? 'inline-block' : 'none';
                 document.getElementById('tab-purchase').style.display = currentUserData.permissions.purchase ? 'inline-block' : 'none';
                 document.getElementById('tab-groups').style.display = currentUserData.permissions.groups ? 'inline-block' : 'none';
-                
+
                 // Show most relevant tab they have access to
                 if (currentUserData.permissions.purchase) showTab('purchase');
                 else if (currentUserData.permissions.settings) showTab('settings');
@@ -94,7 +94,7 @@ auth.onAuthStateChanged(async (user) => {
             document.getElementById('tab-app-users').style.display = 'inline-block';
             showTab('purchase');
         }
-        
+
         // Start real-time sync for conflict prevention
         startSync();
         renderAll();
@@ -136,10 +136,10 @@ async function loadData() {
             data.appUsers = val.appUsers || [];
             data.groups = val.groups || [];
             data.settings = val.settings || { allowEditPlannedQty: false };
-            
+
             // Set global from settings
             allowEditPlannedQty = data.settings.allowEditPlannedQty;
-            
+
             // Migrate old data gracefully
             data.dresses.forEach((d, i) => { if (!d.id) d.id = 'd_' + Date.now() + '_' + i; });
             data.members = data.members.map((m, i) => {
@@ -186,7 +186,7 @@ function startSync() {
             data.groups = val.groups || [];
             data.settings = val.settings || { allowEditPlannedQty: false };
             allowEditPlannedQty = data.settings.allowEditPlannedQty;
-            
+
             console.log('Sync active: Latest data pulled from Firebase');
             renderAll();
         }
@@ -333,14 +333,14 @@ function setViewMode(mode) {
     const activeBtn = document.getElementById('mode-' + mode);
     activeBtn.classList.add('bg-white', 'shadow-sm', 'border', 'border-gray-200');
     activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-200');
-    
+
     // Show/hide criteria selector
     const selector = document.getElementById('groupingCriteria');
     if (selector) {
         if (mode === 'grouped') selector.classList.remove('hidden');
         else selector.classList.add('hidden');
     }
-    
+
     renderAll();
 }
 
@@ -411,7 +411,7 @@ function openModal(type, row) {
     if (type === 'member') title = 'Select Member';
     if (type === 'dress') title = 'Select Dress';
     if (type === 'group') title = 'Select Group';
-    
+
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalSearch').value = '';
     populateModalList('');
@@ -446,7 +446,7 @@ function populateModalList(filterText) {
         const matches = data.groups.filter(g => g.name.toLowerCase().includes(filterText));
         listEl.innerHTML = matches.map(g =>
             `<li class="px-2 py-1 hover:bg-gray-100 cursor-pointer flex items-center gap-2" onclick="selectModal('${g.id}','${g.name}')">
-                <span class="w-3 h-3 rounded-full" style="background-color: ${g.color}"></span>
+                <span class="w-3 h-3 rounded-full" style="background-color: ${g.color}" title="${g.name}"></span>
                 ${g.name}
             </li>`
         ).join('');
@@ -591,14 +591,14 @@ function renderAll() {
         const totalSpentForRow = price * purchasedCountVal;
         const savings = totalEstForRow - totalSpentForRow;
         const status = purchasedCountVal >= count ? "Purchased" : "Pending";
-        
+
         const userPerms = isAdmin ? null : data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
         const canDelete = isAdmin || userPerms?.deleteLog;
 
         const memberName = data.members.find(m => m.id === log.memberId)?.name || '';
         const foundDress = data.dresses.find(d => d.id === log.dressId);
         const dressName = foundDress ? `${foundDress.name} (₹${foundDress.budget.toLocaleString()})` : '';
-        
+
         const foundGroup = data.groups.find(g => g.id === log.groupId);
         const groupColor = foundGroup ? foundGroup.color : '#e5e7eb';
         const groupName = foundGroup ? foundGroup.name : 'No Group';
@@ -613,10 +613,9 @@ function renderAll() {
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 7h2v2H7V7zm3 0h2v2h-2V7zM7 10h2v2H7v-2zm3 0h2v2h-2v-2zm-3 3h2v2H7v-2zm3 0h2v2h-2v-2z"></path></svg>
                         </div>
                     </td>
-                    <td class="p-2 border">
-                        <button onclick="openModal('group', ${absoluteIndex})" class="w-full text-left p-1 bg-transparent flex items-center gap-2">
-                             <span class="w-2 h-2 rounded-full" style="background-color: ${groupColor}"></span>
-                             ${groupName}
+                    <td class="p-2 border text-center">
+                        <button onclick="openModal('group', ${absoluteIndex})" class="p-1 bg-transparent">
+                             <span class="w-3 h-3 rounded-full inline-block shadow-sm" style="background-color: ${groupColor}" title="${groupName}"></span>
                         </button>
                     </td>
                     <td class="p-2 border">
@@ -678,7 +677,7 @@ function renderAll() {
             if (currentGroupingCriteria === 'group') key = log.groupId || 'none';
             else if (currentGroupingCriteria === 'member') key = log.memberId || 'none';
             else if (currentGroupingCriteria === 'dress') key = log.dressId || 'none';
-            
+
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(log);
         });
@@ -704,7 +703,7 @@ function renderAll() {
         sortedKeys.forEach(key => {
             let gName = 'No Group';
             let gColor = '#e5e7eb';
-            
+
             if (currentGroupingCriteria === 'group') {
                 const group = data.groups.find(g => g.id === key);
                 gName = group ? group.name : 'No Group';
@@ -716,9 +715,9 @@ function renderAll() {
                 const dress = data.dresses.find(d => d.id === key);
                 gName = dress ? dress.name : 'No Dress Type';
             }
-            
+
             html += `<tr class="bg-gray-100 font-bold text-xs uppercase tracking-wider"><td colspan="10" class="p-2 border" style="border-left: 8px solid ${gColor}">${gName} (${grouped[key].length} items)</td></tr>`;
-            
+
             grouped[key].forEach((log) => {
                 const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
                 const est = dressInfo.budget;

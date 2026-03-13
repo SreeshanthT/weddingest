@@ -39,6 +39,7 @@ describe('script.js loadData and saveData tests', () => {
             members: [],
             logs: [],
             appUsers: [],
+            groups: [],
             settings: { allowEditPlannedQty: false }
         });
     });
@@ -49,6 +50,7 @@ describe('script.js loadData and saveData tests', () => {
             members: [{ id: "m1", name: "Test Member" }],
             logs: [],
             appUsers: [],
+            groups: [],
             settings: { allowEditPlannedQty: false }
         };
         

@@ -36,14 +36,15 @@
 
     <!-- Navigation Tabs -->
     <div class="flex space-x-4 border-b border-gray-200 mb-6 bg-white rounded-t-lg px-4 pt-2">
-        <button onclick="showTab('settings')" id="tab-settings" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition active">1. Dress Settings</button>
+        <button onclick="showTab('settings')" id="tab-settings" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">1. Dress Settings</button>
         <button onclick="showTab('members')" id="tab-members" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">2. Family Members</button>
         <button onclick="showTab('purchase')" id="tab-purchase" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">3. Purchase Log & Tracker</button>
-        <button onclick="showTab('app-users')" id="tab-app-users" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition" style="display: none;">4. App Users</button>
+        <button onclick="showTab('groups')" id="tab-groups" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition">4. Groups</button>
+        <button onclick="showTab('app-users')" id="tab-app-users" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-indigo-600 transition" style="display: none;">5. App Users</button>
     </div>
 
     <!-- Tab 1: Dress Settings -->
-    <div id="settings" class="tab-content active bg-white p-6 rounded-lg shadow-sm">
+    <div id="settings" class="tab-content bg-white p-6 rounded-lg shadow-sm">
         <h2 class="text-xl font-semibold mb-4">Master Price List <span id="dressCount" class="text-sm text-gray-600"></span></h2>
         <div class="flex gap-4 mb-4 flex-wrap">
             <input type="text" id="newDressType" placeholder="Dress Type (e.g. Kerala Saree)" class="border p-2 rounded flex-1 min-w-[200px]">
@@ -132,12 +133,27 @@
             </label>
         </div>
 
+        <div class="mb-4 flex gap-4 items-center bg-gray-100 p-3 rounded-lg">
+            <span class="text-sm font-bold text-gray-700">VIEW MODE:</span>
+            <div class="flex gap-2 items-center">
+                <button onclick="setViewMode('individual')" id="mode-individual" class="view-mode-btn px-3 py-1 rounded text-sm font-medium bg-white shadow-sm border border-gray-200">Individual</button>
+                <button onclick="setViewMode('grouped')" id="mode-grouped" class="view-mode-btn px-3 py-1 rounded text-sm font-medium text-gray-600 hover:bg-gray-200">Grouped</button>
+                
+                <select id="groupingCriteria" onchange="setGroupingCriteria(this.value)" class="hidden ml-2 text-sm border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 p-1">
+                    <option value="group">Group by Color/Category</option>
+                    <option value="member">Group by Family Member</option>
+                    <option value="dress">Group by Dress Type</option>
+                </select>
+            </div>
+        </div>
+
         <h2 class="text-xl font-semibold mb-4">Shopping Record</h2>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
                 <thead>
                             <tr class="bg-gray-50 text-sm">
                                 <th class="p-3 border w-8"></th>
+                                <th class="p-3 border">Group</th>
                                 <th class="p-3 border">Member</th>
                                 <th class="p-3 border">Dress Type</th>
                                 <th class="p-3 border w-20">Qty Planned</th>
@@ -171,7 +187,27 @@
         </div>
     </div>
 
-    <!-- Tab 4: App Users -->
+    <!-- Tab 4: Groups -->
+    <div id="groups" class="tab-content bg-white p-6 rounded-lg shadow-sm">
+        <h2 class="text-xl font-semibold mb-4">Manage Groups <span id="groupCount" class="text-sm text-gray-600"></span></h2>
+        <div class="flex gap-4 mb-4 flex-wrap">
+            <input type="text" id="newGroupName" placeholder="Group Name (e.g. Wedding Day)" class="border p-2 rounded flex-1 min-w-[200px]">
+            <input type="color" id="newGroupColor" value="#4f46e5" class="border p-1 rounded h-10 w-20 cursor-pointer">
+            <button onclick="addGroup()" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Add Group</button>
+        </div>
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50">
+                    <th class="p-3 border w-12 text-center">Color</th>
+                    <th class="p-3 border">Group Name</th>
+                    <th class="p-3 border w-20">Action</th>
+                </tr>
+            </thead>
+            <tbody id="groupTableBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Tab 5: App Users -->
     <div id="app-users" class="tab-content bg-white p-6 rounded-lg shadow-sm">
         <h2 class="text-xl font-semibold mb-4">Manage User Permissions</h2>
         <div class="overflow-x-auto">
@@ -183,6 +219,7 @@
                         <th class="p-3 border text-center">Dress Settings</th>
                         <th class="p-3 border text-center">Family Members</th>
                         <th class="p-3 border text-center">Purchase Log</th>
+                        <th class="p-3 border text-center">Groups</th>
                         <th class="p-3 border text-center">Add Row</th>
                         <th class="p-3 border text-center">Delete Log</th>
                     </tr>
@@ -191,11 +228,6 @@
             </table>
         </div>
     </div>
-
-    </div>
-    </div>
-    </div>
-</div>
 
 <!-- main logic; no module required now that we use compat globals -->
 <script src="script.js"></script>

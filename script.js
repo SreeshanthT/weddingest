@@ -29,6 +29,7 @@ let isAdmin = false;
 const ADMIN_EMAIL = 'sreeshanththekkedath8@gmail.com';
 
 let allowEditPlannedQty = false;
+let currentViewMode = 'individual'; // 'individual' or 'grouped'
 
 // Detect development environment
 const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -62,7 +63,7 @@ auth.onAuthStateChanged(async (user) => {
                 id: user.uid, // Use Firebase UID for persistence
                 email: user.email,
                 name: user.displayName || user.email,
-                permissions: { settings: false, members: false, purchase: true, addRow: true, deleteLog: true }
+                permissions: { settings: false, members: false, purchase: true, groups: true, addRow: true, deleteLog: true }
             };
             data.appUsers.push(currentUserData);
             await saveData();
@@ -71,10 +72,12 @@ auth.onAuthStateChanged(async (user) => {
         // Hide/show tabs based on role
         if (!isAdmin) {
             document.getElementById('tab-app-users').style.display = 'none';
+            document.getElementById('tab-groups').style.display = 'none';
             if (currentUserData) {
                 document.getElementById('tab-settings').style.display = currentUserData.permissions.settings ? 'inline-block' : 'none';
                 document.getElementById('tab-members').style.display = currentUserData.permissions.members ? 'inline-block' : 'none';
                 document.getElementById('tab-purchase').style.display = currentUserData.permissions.purchase ? 'inline-block' : 'none';
+                document.getElementById('tab-groups').style.display = currentUserData.permissions.groups ? 'inline-block' : 'none';
                 
                 // Show most relevant tab they have access to
                 if (currentUserData.permissions.purchase) showTab('purchase');
@@ -86,8 +89,9 @@ auth.onAuthStateChanged(async (user) => {
             document.getElementById('tab-settings').style.display = 'inline-block';
             document.getElementById('tab-members').style.display = 'inline-block';
             document.getElementById('tab-purchase').style.display = 'inline-block';
+            document.getElementById('tab-groups').style.display = 'inline-block';
             document.getElementById('tab-app-users').style.display = 'inline-block';
-            showTab('app-users');
+            showTab('purchase');
         }
         
         // Start real-time sync for conflict prevention
@@ -111,6 +115,7 @@ let data = {
     logs: [
     ],
     appUsers: [],
+    groups: [],
     settings: {
         allowEditPlannedQty: false
     }
@@ -128,6 +133,7 @@ async function loadData() {
             data.members = val.members || [];
             data.logs = val.logs || [];
             data.appUsers = val.appUsers || [];
+            data.groups = val.groups || [];
             data.settings = val.settings || { allowEditPlannedQty: false };
             
             // Set global from settings
@@ -176,6 +182,7 @@ function startSync() {
             data.members = val.members || [];
             data.logs = val.logs || [];
             data.appUsers = val.appUsers || [];
+            data.groups = val.groups || [];
             data.settings = val.settings || { allowEditPlannedQty: false };
             allowEditPlannedQty = data.settings.allowEditPlannedQty;
             
@@ -216,6 +223,33 @@ function addDressType() {
         data.dresses.push({ id: 'd_' + Date.now() + '_' + Math.floor(Math.random() * 1000), name, budget });
         document.getElementById('newDressType').value = '';
         document.getElementById('newDressBudget').value = '';
+        renderAll();
+        saveData();
+    }
+}
+
+function addGroup() {
+    if (!isAdmin) return alert('Only admin can manage groups');
+    const name = document.getElementById('newGroupName').value;
+    const color = document.getElementById('newGroupColor').value;
+    if (name) {
+        data.groups.push({ id: 'g_' + Date.now() + '_' + Math.floor(Math.random() * 1000), name, color });
+        document.getElementById('newGroupName').value = '';
+        renderAll();
+        saveData();
+    }
+}
+
+function editGroup(index) {
+    if (!isAdmin) return alert('Only admin can edit groups');
+    const g = data.groups[index];
+    const newName = prompt('Group name:', g.name);
+    if (newName === null) return;
+    const newColor = prompt('Group color (hex):', g.color);
+    if (newColor === null) return;
+    if (newName.trim()) {
+        g.name = newName.trim();
+        g.color = newColor;
         renderAll();
         saveData();
     }
@@ -289,6 +323,47 @@ function editMember(index) {
     }
 }
 
+function setViewMode(mode) {
+    currentViewMode = mode;
+    document.querySelectorAll('.view-mode-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'shadow-sm', 'border', 'border-gray-200');
+        btn.classList.add('text-gray-600', 'hover:bg-gray-200');
+    });
+    const activeBtn = document.getElementById('mode-' + mode);
+    activeBtn.classList.add('bg-white', 'shadow-sm', 'border', 'border-gray-200');
+    activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-200');
+    renderAll();
+}
+
+function autoGroupLogs() {
+    if (!isAdmin) {
+        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+        if (!userPerms?.groups) return alert('You do not have permission to manage groupings.');
+    }
+    if (data.members.length === 0) return alert('Add members first to auto-group');
+    
+    // Create groups for each member if they don't exist
+    data.members.forEach(member => {
+        let group = data.groups.find(g => g.name === member.name);
+        if (!group) {
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            group = { id: 'g_' + Date.now() + '_' + Math.floor(Math.random() * 1000), name: member.name, color: randomColor };
+            data.groups.push(group);
+        }
+        
+        // Assign logs of this member to this group
+        data.logs.forEach(log => {
+            if (log.memberId === member.id) {
+                log.groupId = group.id;
+            }
+        });
+    });
+    
+    renderAll();
+    saveData();
+    alert('Logs auto-grouped by member name.');
+}
+
 function updateLog(index, field, value) {
     if (field === 'price') {
         const num = parseFloat(value);
@@ -341,9 +416,17 @@ function toggleEditPlanned() {
 let currentModal = { type: null, row: null };
 
 function openModal(type, row) {
+    if (!isAdmin && type === 'group') {
+        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+        if (!userPerms?.groups) return alert('You do not have permission to manage groupings.');
+    }
     currentModal.type = type;
     currentModal.row = row;
-    const title = type === 'member' ? 'Select Member' : 'Select Dress';
+    let title = 'Select';
+    if (type === 'member') title = 'Select Member';
+    if (type === 'dress') title = 'Select Dress';
+    if (type === 'group') title = 'Select Group';
+    
     document.getElementById('modalTitle').innerText = title;
     document.getElementById('modalSearch').value = '';
     populateModalList('');
@@ -374,6 +457,14 @@ function populateModalList(filterText) {
             const safe = display.replace(/'/g, "\\'");
             return `<li class="px-2 py-1 hover:bg-gray-100 cursor-pointer" onclick="selectModal('${d.id}','${safe}')">${display}</li>`;
         }).join('');
+    } else if (currentModal.type === 'group') {
+        const matches = data.groups.filter(g => g.name.toLowerCase().includes(filterText));
+        listEl.innerHTML = matches.map(g =>
+            `<li class="px-2 py-1 hover:bg-gray-100 cursor-pointer flex items-center gap-2" onclick="selectModal('${g.id}','${g.name}')">
+                <span class="w-3 h-3 rounded-full" style="background-color: ${g.color}"></span>
+                ${g.name}
+            </li>`
+        ).join('');
     }
 }
 
@@ -388,6 +479,8 @@ function selectModal(id, display) {
             updateLog(currentModal.row, 'memberId', id);
         } else if (currentModal.type === 'dress') {
             updateLog(currentModal.row, 'dressId', id);
+        } else if (currentModal.type === 'group') {
+            updateLog(currentModal.row, 'groupId', id);
         }
     }
     closeModal();
@@ -433,6 +526,25 @@ function renderAll() {
         `).join('');
     const dressCountEl = document.getElementById('dressCount');
     if (dressCountEl) dressCountEl.innerText = `(${data.dresses.length} types)`;
+
+    // Render Groups
+    const groupBody = document.getElementById('groupTableBody');
+    if (groupBody) {
+        groupBody.innerHTML = data.groups.map((g, i) => `
+            <tr>
+                <td class="p-3 border text-center">
+                    <span class="inline-block w-6 h-6 rounded border" style="background-color: ${g.color}"></span>
+                </td>
+                <td class="p-3 border text-sm font-medium">${g.name}</td>
+                <td class="p-3 border flex space-x-1">
+                    <button onclick="editGroup(${i})" class="text-blue-500 text-xs">Edit</button>
+                    <button onclick="deleteItem('groups', ${i})" class="text-red-500 text-xs">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+    const groupCountEl = document.getElementById('groupCount');
+    if (groupCountEl) groupCountEl.innerText = `(${data.groups.length} groups)`;
 
     // Render Members
     const memberBody = document.getElementById('memberTableBody');
@@ -483,7 +595,8 @@ function renderAll() {
 
     const logsToRender = filteredLogs;
 
-    logBody.innerHTML = logsToRender.map((log, i) => {
+    // Helper to render log rows
+    const renderLogRow = (log, idx) => {
         const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
         const est = dressInfo.budget;
         const count = Math.max(1, parseInt(log.count) || 1);
@@ -497,26 +610,29 @@ function renderAll() {
         const userPerms = isAdmin ? null : data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
         const canDelete = isAdmin || userPerms?.deleteLog;
 
-        totalEst += totalEstForRow;
-        totalSpent += totalSpentForRow;
-        totalCount += count;
-        purchasedCount += purchasedCountVal;
-        pendingCount += Math.max(0, count - purchasedCountVal);
-
-        // display name value for inputs
         const memberName = data.members.find(m => m.id === log.memberId)?.name || '';
         const foundDress = data.dresses.find(d => d.id === log.dressId);
         const dressName = foundDress ? `${foundDress.name} (₹${foundDress.budget.toLocaleString()})` : '';
+        
+        const foundGroup = data.groups.find(g => g.id === log.groupId);
+        const groupColor = foundGroup ? foundGroup.color : '#e5e7eb';
+        const groupName = foundGroup ? foundGroup.name : 'No Group';
 
         // Find the absolute index in data.logs for mapping back
         const absoluteIndex = data.logs.indexOf(log);
 
         return `
                 <tr class="text-sm cursor-default" draggable="true" data-index="${absoluteIndex}" ondragstart="handleDragStart(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
-                    <td class="p-2 border text-center text-gray-300">
+                    <td class="p-2 border text-center text-gray-300" style="border-left: 4px solid ${groupColor}">
                         <div class="cursor-move p-1 hover:text-gray-600" title="Drag to reorder">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M7 7h2v2H7V7zm3 0h2v2h-2V7zM7 10h2v2H7v-2zm3 0h2v2h-2v-2zm-3 3h2v2H7v-2zm3 0h2v2h-2v-2z"></path></svg>
                         </div>
+                    </td>
+                    <td class="p-2 border">
+                        <button onclick="openModal('group', ${absoluteIndex})" class="w-full text-left p-1 bg-transparent flex items-center gap-2">
+                             <span class="w-2 h-2 rounded-full" style="background-color: ${groupColor}"></span>
+                             ${groupName}
+                        </button>
                     </td>
                     <td class="p-2 border">
                         <button onclick="openModal('member', ${absoluteIndex})" class="w-full text-left p-1 bg-transparent">${memberName || 'Select Member'}</button>
@@ -553,7 +669,64 @@ function renderAll() {
                     </td>
                 </tr>
             `;
-    }).join('');
+    };
+
+    if (currentViewMode === 'individual') {
+        logBody.innerHTML = logsToRender.map((log, i) => {
+            const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
+            const est = dressInfo.budget;
+            const count = Math.max(1, parseInt(log.count) || 1);
+            const purchasedCountVal = Math.max(0, parseInt(log.purchasedCount) || 0);
+            const price = parseFloat(log.price) || 0;
+            totalEst += est * count;
+            totalSpent += price * purchasedCountVal;
+            totalCount += count;
+            purchasedCount += purchasedCountVal;
+            pendingCount += Math.max(0, count - purchasedCountVal);
+            return renderLogRow(log, i);
+        }).join('');
+    } else {
+        // Grouped View
+        const grouped = {};
+        logsToRender.forEach(log => {
+            const gId = log.groupId || 'none';
+            if (!grouped[gId]) grouped[gId] = [];
+            grouped[gId].push(log);
+        });
+
+        let html = '';
+        // Sort groups: show named groups first, then 'No Group'
+        const sortedGroupIds = Object.keys(grouped).sort((a, b) => {
+            if (a === 'none') return 1;
+            if (b === 'none') return -1;
+            const gnA = data.groups.find(g => g.id === a)?.name || '';
+            const gnB = data.groups.find(g => g.id === b)?.name || '';
+            return gnA.localeCompare(gnB);
+        });
+
+        sortedGroupIds.forEach(gId => {
+            const group = data.groups.find(g => g.id === gId);
+            const gName = group ? group.name : 'No Group';
+            const gColor = group ? group.color : '#e5e7eb';
+            
+            html += `<tr class="bg-gray-100 font-bold text-xs uppercase tracking-wider"><td colspan="10" class="p-2 border" style="border-left: 8px solid ${gColor}">${gName} (${grouped[gId].length} items)</td></tr>`;
+            
+            grouped[gId].forEach((log, i) => {
+                const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
+                const est = dressInfo.budget;
+                const count = Math.max(1, parseInt(log.count) || 1);
+                const purchasedCountVal = Math.max(0, parseInt(log.purchasedCount) || 0);
+                const price = parseFloat(log.price) || 0;
+                totalEst += est * count;
+                totalSpent += price * purchasedCountVal;
+                totalCount += count;
+                purchasedCount += purchasedCountVal;
+                pendingCount += Math.max(0, count - purchasedCountVal);
+                html += renderLogRow(log, i);
+            });
+        });
+        logBody.innerHTML = html;
+    }
 
     // Update Stats
     document.getElementById('statTotalEst').innerText = '₹' + totalEst.toLocaleString();
@@ -575,6 +748,15 @@ function renderAll() {
         addRowBtn.style.display = 'inline-block';
     }
 
+    // Show/hide Auto-Group button based on permission
+    const autoGroupBtn = document.querySelector('button[onclick="autoGroupLogs()"]');
+    if (autoGroupBtn && !isAdmin) {
+        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+        autoGroupBtn.style.display = userPerms?.groups ? 'inline-block' : 'none';
+    } else if (autoGroupBtn) {
+        autoGroupBtn.style.display = 'inline-block';
+    }
+
     // Render App Users (Admins only)
     if (isAdmin) {
         const appUsersBody = document.getElementById('appUsersTableBody');
@@ -590,6 +772,9 @@ function renderAll() {
                 </td>
                 <td class="p-3 text-center">
                     <input type="checkbox" ${u.permissions.purchase ? 'checked' : ''} onchange="togglePermission(${i}, 'purchase')" class="w-4 h-4 text-indigo-600 rounded">
+                </td>
+                <td class="p-3 text-center">
+                    <input type="checkbox" ${u.permissions.groups ? 'checked' : ''} onchange="togglePermission(${i}, 'groups')" class="w-4 h-4 text-indigo-600 rounded">
                 </td>
                 <td class="p-3 text-center">
                     <input type="checkbox" ${u.permissions.addRow !== false ? 'checked' : ''} onchange="togglePermission(${i}, 'addRow')" class="w-4 h-4 text-indigo-600 rounded">
@@ -714,6 +899,10 @@ window.updateLog = updateLog;
 window.clearPrice = clearPrice;
 window.clearPurchasedCount = clearPurchasedCount;
 window.togglePermission = togglePermission;
+window.addGroup = addGroup;
+window.editGroup = editGroup;
+window.setViewMode = setViewMode;
+window.autoGroupLogs = autoGroupLogs;
 window.exportCSV = exportCSV;
 window.exportToExcel = exportToExcel;
 window.toggleEditPlanned = toggleEditPlanned;

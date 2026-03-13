@@ -38,7 +38,8 @@ describe('script.js loadData and saveData tests', () => {
             dresses: [],
             members: [],
             logs: [],
-            appUsers: []
+            appUsers: [],
+            settings: { allowEditPlannedQty: false }
         });
     });
 

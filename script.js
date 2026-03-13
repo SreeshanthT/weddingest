@@ -62,7 +62,7 @@ auth.onAuthStateChanged(async (user) => {
                 id: user.uid, // Use Firebase UID for persistence
                 email: user.email,
                 name: user.displayName || user.email,
-                permissions: { settings: false, members: false, purchase: true }
+                permissions: { settings: false, members: false, purchase: true, addRow: true, deleteLog: true }
             };
             data.appUsers.push(currentUserData);
             await saveData();
@@ -233,6 +233,10 @@ function addMember() {
 }
 
 function addRow() {
+    if (!isAdmin) {
+        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+        if (!userPerms?.addRow) return alert('You do not have permission to add rows.');
+    }
     data.logs.push({ id: 'l_' + Date.now() + '_' + Math.floor(Math.random() * 1000), memberId: "", dressId: "", price: 0, count: 1, purchasedCount: 0 });
     renderAll();
     saveData();
@@ -243,9 +247,15 @@ function deleteItem(arrayName, index) {
     if (!confirm('Are you sure you want to delete this item?')) {
         return;
     }
-    if (!isAdmin && (arrayName === 'dresses' || arrayName === 'members')) {
-        alert('Only admin can delete master data');
-        return;
+    if (!isAdmin) {
+        if (arrayName === 'dresses' || arrayName === 'members') {
+            alert('Only admin can delete master data');
+            return;
+        }
+        if (arrayName === 'logs') {
+            const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+            if (!userPerms?.deleteLog) return alert('You do not have permission to delete logs.');
+        }
     }
     data[arrayName].splice(index, 1);
     renderAll();
@@ -483,6 +493,9 @@ function renderAll() {
         const totalSpentForRow = price * purchasedCountVal;
         const savings = totalEstForRow - totalSpentForRow;
         const status = purchasedCountVal >= count ? "Purchased" : "Pending";
+        
+        const userPerms = isAdmin ? null : data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+        const canDelete = isAdmin || userPerms?.deleteLog;
 
         totalEst += totalEstForRow;
         totalSpent += totalSpentForRow;
@@ -528,7 +541,7 @@ function renderAll() {
                         </span>
                     </td>
                     <td class="p-2 border text-center">
-                        <button onclick="deleteItem('logs', ${i})" class="text-gray-400 hover:text-red-500">✕</button>
+                        ${canDelete ? `<button onclick="deleteItem('logs', ${i})" class="text-gray-400 hover:text-red-500">✕</button>` : ''}
                     </td>
                 </tr>
             `;
@@ -545,6 +558,15 @@ function renderAll() {
     if (purchasedEl) purchasedEl.innerText = purchasedCount;
     if (pendingEl) pendingEl.innerText = pendingCount;
 
+    // Show/hide Add Row button based on permission
+    const addRowBtn = document.querySelector('button[onclick="addRow()"]');
+    if (addRowBtn && !isAdmin) {
+        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
+        addRowBtn.style.display = userPerms?.addRow ? 'inline-block' : 'none';
+    } else if (addRowBtn) {
+        addRowBtn.style.display = 'inline-block';
+    }
+
     // Render App Users (Admins only)
     if (isAdmin) {
         const appUsersBody = document.getElementById('appUsersTableBody');
@@ -560,6 +582,12 @@ function renderAll() {
                 </td>
                 <td class="p-3 text-center">
                     <input type="checkbox" ${u.permissions.purchase ? 'checked' : ''} onchange="togglePermission(${i}, 'purchase')" class="w-4 h-4 text-indigo-600 rounded">
+                </td>
+                <td class="p-3 text-center">
+                    <input type="checkbox" ${u.permissions.addRow !== false ? 'checked' : ''} onchange="togglePermission(${i}, 'addRow')" class="w-4 h-4 text-indigo-600 rounded">
+                </td>
+                <td class="p-3 text-center">
+                    <input type="checkbox" ${u.permissions.deleteLog !== false ? 'checked' : ''} onchange="togglePermission(${i}, 'deleteLog')" class="w-4 h-4 text-indigo-600 rounded">
                 </td>
             </tr>
         `).join('');

@@ -28,13 +28,13 @@ let currentUser = null;
 let isAdmin = false;
 const ADMIN_EMAIL = 'sreeshanththekkedath8@gmail.com';
 
-function loginWithGoogle() {
+window.loginWithGoogle = function() {
     auth.signInWithPopup(provider).catch(console.error);
-}
+};
 
-function logout() {
+window.logout = function() {
     auth.signOut().catch(console.error);
-}
+};
 
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -515,8 +515,6 @@ function exportToExcel() {
 }
 
 // expose functions used by inline event handlers so they live on the global scope
-window.loginWithGoogle = loginWithGoogle;
-window.logout = logout;
 // (modules are scoped to themselves and don't automatically export to window)
 window.showTab = showTab;
 window.addDressType = addDressType;

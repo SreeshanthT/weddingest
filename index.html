@@ -133,15 +133,17 @@
             </label>
         </div>
 
-        <!-- Grouping Controls -->
         <div class="mb-4 flex gap-4 items-center bg-gray-100 p-3 rounded-lg">
             <span class="text-sm font-bold text-gray-700">VIEW MODE:</span>
-            <div class="flex gap-2">
+            <div class="flex gap-2 items-center">
                 <button onclick="setViewMode('individual')" id="mode-individual" class="view-mode-btn px-3 py-1 rounded text-sm font-medium bg-white shadow-sm border border-gray-200">Individual</button>
                 <button onclick="setViewMode('grouped')" id="mode-grouped" class="view-mode-btn px-3 py-1 rounded text-sm font-medium text-gray-600 hover:bg-gray-200">Grouped</button>
-            </div>
-            <div class="ml-auto">
-                <button onclick="autoGroupLogs()" class="bg-indigo-500 text-white px-3 py-1 rounded text-xs hover:bg-indigo-600 transition shadow-sm">Auto-Group by Member</button>
+                
+                <select id="groupingCriteria" onchange="setGroupingCriteria(this.value)" class="hidden ml-2 text-sm border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500 p-1">
+                    <option value="group">Group by Color/Category</option>
+                    <option value="member">Group by Family Member</option>
+                    <option value="dress">Group by Dress Type</option>
+                </select>
             </div>
         </div>
 

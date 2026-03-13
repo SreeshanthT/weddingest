@@ -30,6 +30,7 @@ const ADMIN_EMAIL = 'sreeshanththekkedath8@gmail.com';
 
 let allowEditPlannedQty = false;
 let currentViewMode = 'individual'; // 'individual' or 'grouped'
+let currentGroupingCriteria = 'group'; // 'group', 'member', or 'dress'
 
 // Detect development environment
 const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -63,7 +64,7 @@ auth.onAuthStateChanged(async (user) => {
                 id: user.uid, // Use Firebase UID for persistence
                 email: user.email,
                 name: user.displayName || user.email,
-                permissions: { settings: false, members: false, purchase: true, groups: true, addRow: true, deleteLog: true }
+                permissions: { settings: false, members: false, purchase: true, groups: false, addRow: false, deleteLog: false }
             };
             data.appUsers.push(currentUserData);
             await saveData();
@@ -332,36 +333,20 @@ function setViewMode(mode) {
     const activeBtn = document.getElementById('mode-' + mode);
     activeBtn.classList.add('bg-white', 'shadow-sm', 'border', 'border-gray-200');
     activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-200');
+    
+    // Show/hide criteria selector
+    const selector = document.getElementById('groupingCriteria');
+    if (selector) {
+        if (mode === 'grouped') selector.classList.remove('hidden');
+        else selector.classList.add('hidden');
+    }
+    
     renderAll();
 }
 
-function autoGroupLogs() {
-    if (!isAdmin) {
-        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
-        if (!userPerms?.groups) return alert('You do not have permission to manage groupings.');
-    }
-    if (data.members.length === 0) return alert('Add members first to auto-group');
-    
-    // Create groups for each member if they don't exist
-    data.members.forEach(member => {
-        let group = data.groups.find(g => g.name === member.name);
-        if (!group) {
-            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-            group = { id: 'g_' + Date.now() + '_' + Math.floor(Math.random() * 1000), name: member.name, color: randomColor };
-            data.groups.push(group);
-        }
-        
-        // Assign logs of this member to this group
-        data.logs.forEach(log => {
-            if (log.memberId === member.id) {
-                log.groupId = group.id;
-            }
-        });
-    });
-    
+function setGroupingCriteria(criteria) {
+    currentGroupingCriteria = criteria;
     renderAll();
-    saveData();
-    alert('Logs auto-grouped by member name.');
 }
 
 function updateLog(index, field, value) {
@@ -686,32 +671,55 @@ function renderAll() {
             return renderLogRow(log, i);
         }).join('');
     } else {
-        // Grouped View
+        // Grouped View (Dynamic)
         const grouped = {};
         logsToRender.forEach(log => {
-            const gId = log.groupId || 'none';
-            if (!grouped[gId]) grouped[gId] = [];
-            grouped[gId].push(log);
+            let key = 'none';
+            if (currentGroupingCriteria === 'group') key = log.groupId || 'none';
+            else if (currentGroupingCriteria === 'member') key = log.memberId || 'none';
+            else if (currentGroupingCriteria === 'dress') key = log.dressId || 'none';
+            
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(log);
         });
 
         let html = '';
-        // Sort groups: show named groups first, then 'No Group'
-        const sortedGroupIds = Object.keys(grouped).sort((a, b) => {
+        const sortedKeys = Object.keys(grouped).sort((a, b) => {
             if (a === 'none') return 1;
             if (b === 'none') return -1;
-            const gnA = data.groups.find(g => g.id === a)?.name || '';
-            const gnB = data.groups.find(g => g.id === b)?.name || '';
-            return gnA.localeCompare(gnB);
+            let nameA = '', nameB = '';
+            if (currentGroupingCriteria === 'group') {
+                nameA = data.groups.find(g => g.id === a)?.name || '';
+                nameB = data.groups.find(g => g.id === b)?.name || '';
+            } else if (currentGroupingCriteria === 'member') {
+                nameA = data.members.find(m => m.id === a)?.name || '';
+                nameB = data.members.find(m => m.id === b)?.name || '';
+            } else if (currentGroupingCriteria === 'dress') {
+                nameA = data.dresses.find(d => d.id === a)?.name || '';
+                nameB = data.dresses.find(d => d.id === b)?.name || '';
+            }
+            return nameA.localeCompare(nameB);
         });
 
-        sortedGroupIds.forEach(gId => {
-            const group = data.groups.find(g => g.id === gId);
-            const gName = group ? group.name : 'No Group';
-            const gColor = group ? group.color : '#e5e7eb';
+        sortedKeys.forEach(key => {
+            let gName = 'No Group';
+            let gColor = '#e5e7eb';
             
-            html += `<tr class="bg-gray-100 font-bold text-xs uppercase tracking-wider"><td colspan="10" class="p-2 border" style="border-left: 8px solid ${gColor}">${gName} (${grouped[gId].length} items)</td></tr>`;
+            if (currentGroupingCriteria === 'group') {
+                const group = data.groups.find(g => g.id === key);
+                gName = group ? group.name : 'No Group';
+                gColor = group ? group.color : '#e5e7eb';
+            } else if (currentGroupingCriteria === 'member') {
+                const member = data.members.find(m => m.id === key);
+                gName = member ? member.name : 'No Member';
+            } else if (currentGroupingCriteria === 'dress') {
+                const dress = data.dresses.find(d => d.id === key);
+                gName = dress ? dress.name : 'No Dress Type';
+            }
             
-            grouped[gId].forEach((log, i) => {
+            html += `<tr class="bg-gray-100 font-bold text-xs uppercase tracking-wider"><td colspan="10" class="p-2 border" style="border-left: 8px solid ${gColor}">${gName} (${grouped[key].length} items)</td></tr>`;
+            
+            grouped[key].forEach((log) => {
                 const dressInfo = data.dresses.find(d => d.id === log.dressId) || { budget: 0 };
                 const est = dressInfo.budget;
                 const count = Math.max(1, parseInt(log.count) || 1);
@@ -722,7 +730,7 @@ function renderAll() {
                 totalCount += count;
                 purchasedCount += purchasedCountVal;
                 pendingCount += Math.max(0, count - purchasedCountVal);
-                html += renderLogRow(log, i);
+                html += renderLogRow(log);
             });
         });
         logBody.innerHTML = html;
@@ -746,15 +754,6 @@ function renderAll() {
         addRowBtn.style.display = userPerms?.addRow ? 'inline-block' : 'none';
     } else if (addRowBtn) {
         addRowBtn.style.display = 'inline-block';
-    }
-
-    // Show/hide Auto-Group button based on permission
-    const autoGroupBtn = document.querySelector('button[onclick="autoGroupLogs()"]');
-    if (autoGroupBtn && !isAdmin) {
-        const userPerms = data.appUsers.find(u => u.email === auth.currentUser?.email)?.permissions;
-        autoGroupBtn.style.display = userPerms?.groups ? 'inline-block' : 'none';
-    } else if (autoGroupBtn) {
-        autoGroupBtn.style.display = 'inline-block';
     }
 
     // Render App Users (Admins only)
@@ -902,7 +901,7 @@ window.togglePermission = togglePermission;
 window.addGroup = addGroup;
 window.editGroup = editGroup;
 window.setViewMode = setViewMode;
-window.autoGroupLogs = autoGroupLogs;
+window.setGroupingCriteria = setGroupingCriteria;
 window.exportCSV = exportCSV;
 window.exportToExcel = exportToExcel;
 window.toggleEditPlanned = toggleEditPlanned;

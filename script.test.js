@@ -45,7 +45,8 @@ describe('script.js loadData and saveData tests', () => {
         const testData = {
             dresses: [{ id: "d1", name: "Test Dress", budget: 100 }],
             members: [{ id: "m1", name: "Test Member" }],
-            logs: []
+            logs: [],
+            settings: { allowEditPlannedQty: false }
         };
         
         // Mock a snapshot object returning true for exists() and our testData
@@ -57,7 +58,7 @@ describe('script.js loadData and saveData tests', () => {
         await script.loadData();
         
         // Validate it fetched the specific ref correctly
-        expect(global.mockRef).toHaveBeenCalledWith('/data');
+        expect(global.mockRef).toHaveBeenCalledWith('/test');
         expect(global.mockOnce).toHaveBeenCalledWith('value');
         
         // Validate internal data was updated
@@ -75,7 +76,7 @@ describe('script.js loadData and saveData tests', () => {
 
         await script.loadData();
         
-        expect(global.mockRef).toHaveBeenCalledWith('/data');
+        expect(global.mockRef).toHaveBeenCalledWith('/test');
         expect(global.mockOnce).toHaveBeenCalledWith('value');
         
         // Should not have modified the initial state
@@ -100,7 +101,7 @@ describe('script.js loadData and saveData tests', () => {
         
         await script.saveData();
         
-        expect(global.mockRef).toHaveBeenCalledWith('/data');
+        expect(global.mockRef).toHaveBeenCalledWith('/test');
         expect(global.mockSet).toHaveBeenCalledWith(expectedData);
     });
 
@@ -109,6 +110,6 @@ describe('script.js loadData and saveData tests', () => {
         
         await expect(script.saveData()).resolves.not.toThrow();
         
-        expect(global.mockRef).toHaveBeenCalledWith('/data');
+        expect(global.mockRef).toHaveBeenCalledWith('/test');
     });
 });

@@ -28,6 +28,12 @@ let currentUser = null;
 let isAdmin = false;
 const ADMIN_EMAIL = 'sreeshanththekkedath8@gmail.com';
 
+let allowEditPlannedQty = false;
+
+// Detect development environment
+const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const dataRef = isDev ? '/test' : '/data';
+
 window.loginWithGoogle = function() {
     auth.signInWithPopup(provider).catch(console.error);
 };
@@ -83,20 +89,27 @@ let data = {
     ],
     logs: [
         { id: "l1", memberId: "m1", dressId: "d1", price: 7200, count: 1 }
-    ]
+    ],
+    settings: {
+        allowEditPlannedQty: false
+    }
 };
 
 // load & save helpers for backend persistence
 async function loadData() {
     console.debug('loadData() called');
     try {
-        const snapshot = await db.ref('/data').once('value');
+        const snapshot = await db.ref(dataRef).once('value');
         console.debug('snapshot received', snapshot.exists());
         if (snapshot.exists()) {
             const val = snapshot.val();
             data.dresses = val.dresses || [];
             data.members = val.members || [];
             data.logs = val.logs || [];
+            data.settings = val.settings || { allowEditPlannedQty: false };
+            
+            // Set global from settings
+            allowEditPlannedQty = data.settings.allowEditPlannedQty;
             
             // Migrate old data gracefully
             data.dresses.forEach((d, i) => { if (!d.id) d.id = 'd_' + Date.now() + '_' + i; });
@@ -133,8 +146,11 @@ async function loadData() {
 
 async function saveData() {
     console.log('saveData() called with', data);
+    // Ensure settings is up to date
+    data.settings = data.settings || {};
+    data.settings.allowEditPlannedQty = allowEditPlannedQty;
     try {
-        await db.ref('/data').set(data);
+        await db.ref(dataRef).set(data);
         console.log('saveData() successful');
     } catch (e) {
         console.log('failed to save data to Firebase', e);
@@ -253,6 +269,12 @@ function clearPurchasedCount(index) {
         return;
     }
     data.logs[index].purchasedCount = 0;
+    renderAll();
+    saveData();
+}
+
+function toggleEditPlanned() {
+    allowEditPlannedQty = document.getElementById('editPlannedToggle').checked;
     renderAll();
     saveData();
 }
@@ -379,6 +401,14 @@ function renderAll() {
     // refresh filter options
     populateFilters();
 
+    // show/hide admin controls
+    if (isAdmin) {
+        document.getElementById('adminControls').style.display = 'block';
+        document.getElementById('editPlannedToggle').checked = allowEditPlannedQty;
+    } else {
+        document.getElementById('adminControls').style.display = 'none';
+    }
+
     // read filter values
     const memberFilter = document.getElementById('filterMember').value;
     const dressFilter = document.getElementById('filterDress').value;
@@ -426,7 +456,7 @@ function renderAll() {
                         <button onclick="openModal('dress', ${i})" class="w-full text-left p-1 bg-transparent">${dressName || 'Select Dress'}</button>
                     </td>
                     <td class="p-2 border">
-                        <input type="number" min="1" value="${count}" onchange="updateLog(${i}, 'count', this.value)" class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Planned quantity">
+                        <input type="number" min="1" value="${count}" onchange="updateLog(${i}, 'count', this.value)" ${!allowEditPlannedQty ? 'disabled' : ''} class="w-full p-1 bg-transparent font-mono border-b border-gray-200" title="Planned quantity">
                     </td>
                     <td class="p-2 border">
                         <div class="flex items-center gap-1">
@@ -579,6 +609,7 @@ window.deleteItem = deleteItem;
 window.updateLog = updateLog;
 window.exportCSV = exportCSV;
 window.exportToExcel = exportToExcel;
+window.toggleEditPlanned = toggleEditPlanned;
 
 // Initial render
 window.onload = async () => {
